@@ -110,7 +110,7 @@ print(f"Setting working directory to: [{working_directory}]")
 
 # STEP 3: GET PORTABLE GIT
 git_checker = sp.run("where git", stdout=sp.PIPE, stderr=sp.STDOUT, text=True)
-if git_checker.returncode == 1:
+if git_checker.returncode == 0:
     git_path = "git"
 else:
     if not os.path.exists(f"{working_directory}\\PortableGit"):
