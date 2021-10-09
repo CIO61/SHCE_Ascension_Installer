@@ -145,6 +145,8 @@ if not os.path.exists(f"{working_directory}\\BootstrapMultiplayerSetup"):
         print("\n Done!")
 else:
     # STEP 4.5: PULL IN CASE IT HAS BEEN GOTTEN BEFORE BUT NOT UP TO DATE
+    if os.path.exists(uninsjson := f"{working_directory}\\BootstrapMultiplayerSetup\\uninstall.json"):
+        os.remove(uninsjson)
     git_puller = threading.Thread(target=sp.run, kwargs={
         "args": f"{git_path} pull",
         "cwd": f"{working_directory}\\BootstrapMultiplayerSetup",
