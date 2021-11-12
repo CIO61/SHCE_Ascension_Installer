@@ -78,7 +78,7 @@ if os.path.exists(configfile_path):
     working_directory = cfg_data["working_directory"]
     no_prompt = cfg_data["no_prompt"]
 else:
-    game_path = ""
+    game_path = sys.argv[1] if len(sys.argv) > 1 else ""
     working_directory = ""
     no_prompt = False
 
