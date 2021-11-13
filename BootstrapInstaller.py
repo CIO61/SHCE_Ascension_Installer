@@ -71,6 +71,7 @@ def get_game_path():
 
 
 # STEP 0: CHECK EXISTING CONFIG
+scriptpath = sys.argv[1] if len(sys.argv) > 1 else ""
 if os.path.exists(configfile_path):
     with open(configfile_path) as cfg_file:
         cfg_data = json.load(cfg_file)
@@ -78,16 +79,26 @@ if os.path.exists(configfile_path):
     working_directory = cfg_data["working_directory"]
     no_prompt = cfg_data["no_prompt"]
 else:
-    game_path = sys.argv[1] if len(sys.argv) > 1 else ""
+    game_path = scriptpath
     working_directory = ""
     no_prompt = False
 
 
 # STEP 1: FIND OUT THE GAME PATH
+
+# 1.1: In the same folder as the installer
+if os.path.abspath(scriptpath) != os.path.abspath(game_path):
+    if os.path.isdir(scriptpath) and ("Stronghold_Crusader_Extreme.exe" in os.listdir(scriptpath)):
+        rv = pymsgbox.confirm(text=f"Found SHCE in {scriptpath} for installation. Proceed?", title="Bootstrap Installler")
+        if rv == "OK":
+            no_prompt = True
+            game_path = scriptpath
+
+# 1.2: In the folder specified by config file
 game_found = os.path.isdir(game_path) and ("Stronghold_Crusader_Extreme.exe" in os.listdir(game_path))
 if game_found:
     if not no_prompt:
-        rv = pymsgbox.confirm(text=f"Found path {game_path} for installation. Proceed?", title="Bootstrap Installler")
+        rv = pymsgbox.confirm(text=f"Found SHCE in {game_path} for installation from previous config. Proceed?", title="Bootstrap Installler")
         if rv == "OK":
             rv2 = pymsgbox.confirm(text=f"Do you want to always use this path?", title="Bootstrap Installler",
                                    buttons=[pymsgbox.YES_TEXT, pymsgbox.NO_TEXT])
@@ -95,7 +106,7 @@ if game_found:
         else:
             game_path = get_game_path()
 else:
-    pymsgbox.alert("Cannot find game installation! Please show me your Stronghold_Crusader_Extreme.exe")
+    pymsgbox.alert("Cannot find game installation! Please locate Stronghold_Crusader_Extreme.exe")
     game_path = get_game_path()
 
 # STEP 2: SET WORKING DIRECTORY
