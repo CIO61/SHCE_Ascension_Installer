@@ -71,7 +71,7 @@ def get_game_path():
 
 
 # STEP 0: CHECK EXISTING CONFIG
-scriptpath = sys.argv[1] if len(sys.argv) > 1 else ""
+scriptpath = " ".join(sys.argv) if len(sys.argv) > 1 else ""
 if os.path.exists(configfile_path):
     with open(configfile_path) as cfg_file:
         cfg_data = json.load(cfg_file)
