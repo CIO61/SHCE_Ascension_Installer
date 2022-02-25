@@ -71,7 +71,7 @@ def get_game_path():
 
 
 # STEP 0: CHECK EXISTING CONFIG
-scriptpath = " ".join(sys.argv) if len(sys.argv) > 1 else ""
+scriptpath = (" ".join(sys.argv[1:]) if len(sys.argv) > 1 else "")
 if os.path.exists(configfile_path):
     with open(configfile_path) as cfg_file:
         cfg_data = json.load(cfg_file)
@@ -159,7 +159,7 @@ else:
     if os.path.exists(uninsjson := f"{working_directory}\\BootstrapMultiplayerSetup\\uninstall.json"):
         os.remove(uninsjson)
     git_puller = threading.Thread(target=sp.run, kwargs={
-        "args": f"{git_path} pull",
+        "args": f"{git_path} checkout main .",
         "cwd": f"{working_directory}\\BootstrapMultiplayerSetup",
         "creationflags": sp.CREATE_NO_WINDOW
     })
@@ -206,10 +206,10 @@ for mapfile_custom in maps_to_backup:
     pth_custom_maps = f"{game_path}\\mapsExtreme\\backup"
     if not os.path.exists(pth_custom_maps):
         os.makedirs(pth_custom_maps)
-        try:
-            shutil.move(f"{game_path}\\mapsExtreme\\{mapfile_custom}", pth_custom_maps)
-        except shutil.Error:
-            pass
+    try:
+        shutil.move(f"{game_path}\\mapsExtreme\\{mapfile_custom}", pth_custom_maps)
+    except shutil.Error:
+        pass
 for map_to_copy in maps_to_copy:
     shutil.copy2(f"{working_directory}\\BootstrapMultiplayerSetup\\DONTOPEN\\mapsExtreme\\{map_to_copy}",
                  f"{game_path}\\mapsExtreme")
