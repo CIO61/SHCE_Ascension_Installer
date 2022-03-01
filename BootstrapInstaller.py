@@ -89,7 +89,7 @@ else:
 # 1.1: In the same folder as the installer
 if os.path.abspath(scriptpath) != os.path.abspath(game_path):
     if os.path.isdir(scriptpath) and ("Stronghold_Crusader_Extreme.exe" in os.listdir(scriptpath)):
-        rv = pymsgbox.confirm(text=f"Found SHCE in {scriptpath} for installation. Proceed?", title="Bootstrap Installler")
+        rv = pymsgbox.confirm(text=f"Found SHCE here for installation. Proceed?", title="Bootstrap Installler")
         if rv == "OK":
             no_prompt = True
             game_path = scriptpath
@@ -155,22 +155,31 @@ if not os.path.exists(f"{working_directory}\\BootstrapMultiplayerSetup"):
     else:
         print("\n Done!")
 else:
-    # STEP 4.5: PULL IN CASE IT HAS BEEN GOTTEN BEFORE BUT NOT UP TO DATE
+    # STEP 4.5: CHECKOUT&PULL IN CASE IT HAS BEEN GOTTEN BEFORE BUT NOT UP TO DATE/CORRUPTED
     if os.path.exists(uninsjson := f"{working_directory}\\BootstrapMultiplayerSetup\\uninstall.json"):
         os.remove(uninsjson)
-    git_puller = threading.Thread(target=sp.run, kwargs={
+    git_checkouter = threading.Thread(target=sp.run, kwargs={
         "args": f"{git_path} checkout main .",
         "cwd": f"{working_directory}\\BootstrapMultiplayerSetup",
         "creationflags": sp.CREATE_NO_WINDOW
     })
-    git_puller.start()
+    git_checkouter.start()
     print("Checking for setup updates", end="")
     time.sleep(2)
-    while git_puller.is_alive():
+    while git_checkouter.is_alive():
         time.sleep(1)
         print(".", end="")
     else:
         print("\nDone Checking Updates.")
+
+    git_puller = threading.Thread(target=sp.run, kwargs={
+        "args": f"{git_path} pull",
+        "cwd": f"{working_directory}\\BootstrapMultiplayerSetup",
+        "creationflags": sp.CREATE_NO_WINDOW
+    })
+    git_puller.start()
+    while git_puller.is_alive():
+        time.sleep(1)
 
 # STEP 5: CREATE A DIRECTORY JUNCTION TO GAMEDIR <<==>> BootstrapMultiplayerSetup
 print(f"Installing Bootstrap mode to {game_path}")
