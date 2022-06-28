@@ -10,12 +10,15 @@ from urllib.error import URLError
 import pymsgbox
 import win32con
 import shutil
+import zipfile
+import hashlib
 
 # noinspection PyPackageRequirements
 from win32gui import GetOpenFileNameW
+# noinspection PyPackageRequirements
+from win32com import client
 
-config_directory = os.environ["USERPROFILE"] + "\\.shc_bootstrap_installer"
-configfile_path = f"{config_directory}\\installer_config.json"
+configfile_path = f"installer_config.json"
 original_maps_set = {
     "Best_Friends.map", "Bird_in_flight.map", "Coastal_Trap.map", "Crossroads.map", "Divided.map", "Enclosure.map",
     "Fury_Bay.map", "Jealous_Neighbours.map", "MP-No mans land.map", "MP-No where to hide.map", "MP-Slopes of doom.map",
@@ -24,6 +27,11 @@ original_maps_set = {
     "Phoenix.map", "Rivers_Fork.map", "Snake_River.map", "Spider_Island.map", "Swampy_Island.map",
     "The_Host.map", "Three_Little_Pigs.map", "Ultimate_Victory.map", "Wazirs_Fortress.map", "Wide_Open_Plain.map"
 }
+original_gm1_md5 = {
+    'body_arab_assasin': '5f988b6df71d8b30a975f93ed4e758a3',
+    'body_horse_archer_top': '9cf44ef27eb6c9b15cdcc1a1edbf54f6',
+    'body_fighting_monk': 'a9968074978a3103f8343f2456d87b91',
+    'tree_shrub2': '7281ddf03f7307a6d1fba0eef785090e'}
 
 
 def check_for_maps_extreme_content(path):
@@ -87,12 +95,13 @@ else:
 # STEP 1: FIND OUT THE GAME PATH
 
 # 1.1: In the same folder as the installer
-if os.path.abspath(scriptpath) != os.path.abspath(game_path):
+if os.path.abspath(scriptpath) == os.path.abspath(game_path):
     if os.path.isdir(scriptpath) and ("Stronghold_Crusader_Extreme.exe" in os.listdir(scriptpath)):
-        rv = pymsgbox.confirm(text=f"Found SHCE here for installation. Proceed?", title="Bootstrap Installler")
-        if rv == "OK":
-            no_prompt = True
-            game_path = scriptpath
+        if not no_prompt:
+            rv = pymsgbox.confirm(text=f"Found SHCE here for installation. Proceed?", title="Bootstrap Installer")
+            if rv == "OK":
+                no_prompt = True
+                game_path = scriptpath
 
 # 1.2: In the folder specified by config file
 game_found = os.path.isdir(game_path) and ("Stronghold_Crusader_Extreme.exe" in os.listdir(game_path))
@@ -100,7 +109,7 @@ if game_found:
     if not no_prompt:
         rv = pymsgbox.confirm(text=f"Found SHCE in {game_path} for installation from previous config. Proceed?", title="Bootstrap Installler")
         if rv == "OK":
-            rv2 = pymsgbox.confirm(text=f"Do you want to always use this path?", title="Bootstrap Installler",
+            rv2 = pymsgbox.confirm(text=f"Do you want to always use this path?", title="Bootstrap Installer",
                                    buttons=[pymsgbox.YES_TEXT, pymsgbox.NO_TEXT])
             no_prompt = (rv2 == "Yes")
         else:
@@ -114,7 +123,7 @@ if not working_directory:
     if game_path[0] != os.environ["USERPROFILE"][0]:
         working_directory = f"{game_path[0]}:\\bootstrap_installer_workspace"
     else:
-        working_directory = config_directory
+        working_directory = f'{os.environ["USERPROFILE"]}\\bootstrap_installer_workspace'
 
 os.makedirs(working_directory, exist_ok=True)
 print(f"Setting working directory to: [{working_directory}]")
@@ -223,10 +232,37 @@ for map_to_copy in maps_to_copy:
     shutil.copy2(f"{working_directory}\\BootstrapMultiplayerSetup\\DONTOPEN\\mapsExtreme\\{map_to_copy}",
                  f"{game_path}\\mapsExtreme")
 
-# STEP 8: VOILA
-if not os.path.exists(config_directory):
-    os.makedirs(config_directory, exist_ok=True)
+# STEP 8: ACQUIRE CUSTOM GRAPHICS
+cg_firsttime = not os.path.exists("CustomGraphics")
+if os.path.exists(f"{working_directory}\\BootstrapMultiplayerSetup\\CustomGraphics.zip"):
+    with zipfile.ZipFile(f"{working_directory}\\BootstrapMultiplayerSetup\\customGraphics.zip") as zip_ref:
+        zip_ref.extractall()
+    if cg_firsttime:
+        for cg_folder in os.listdir("CustomGraphics"):
+            ref_checksum = original_gm1_md5[cg_folder]
+            cg_filename = "OriginalFireflyTexture.gm1"
+            with open(f"{game_path}\\gm\\{cg_folder}.gm1", 'rb') as gm1file_reference:
+                cg_file_checksum = hashlib.md5(gm1file_reference.read()).hexdigest()
+                cg_is_original = cg_file_checksum == ref_checksum
+                if cg_is_original:
+                    sp.run(f"copy {game_path}\\gm\\{cg_folder}.gm1 "
+                           f"CustomGraphics\\{cg_folder}\\{cg_filename} > NUL", shell=True)
+                else:
+                    for cg_file in os.listdir(f"CustomGraphics\\{cg_folder}"):
+                        with open(f"CustomGraphics\\{cg_folder}\\{cg_file}", "rb") as cg_file_check:
+                            if hashlib.md5(cg_file_check.read()).hexdigest() == cg_file_checksum:
+                                break  # it is one of the known custom texture files
+                    else:  # it is a completely different custom texture file
+                        cg_filename = "UnknownCustomTexture.gm1"
+                        i = 0
+                        while cg_filename not in os.listdir(f"CustomGraphics\\{cg_folder}"):
+                            cg_filename = f"UnknownCustomTexture_{i}.gm1"
 
+                        sp.run(f"copy {game_path}\\gm\\{cg_folder}.gm1 "
+                               f"CustomGraphics\\{cg_folder}\\{cg_filename} > NUL", shell=True)
+
+
+# STEP 9: VOILA, save config
 with open(configfile_path, "w") as configfile_write:
     json.dump({
         "game_path": game_path,
@@ -234,6 +270,31 @@ with open(configfile_path, "w") as configfile_write:
         "no_prompt": no_prompt
     }, configfile_write)
 
+shell = client.Dispatch("WScript.Shell")
+
+updater_shortcut_path = os.path.abspath(game_path+"\\BootstrapMod - Updater.lnk")
+cg_cfg_shortcut_path = os.path.abspath(game_path+"\\BootstrapMod - CustomGraphicConfigurator.lnk")
+
+if not os.path.exists(updater_shortcut_path):
+    shortcut_updater = shell.CreateShortCut(updater_shortcut_path)
+    shortcut_updater.WorkingDirectory = os.path.abspath("")
+    shortcut_updater.Arguments = os.path.abspath("..\\")
+    shortcut_updater.Targetpath = sys.executable
+    shortcut_updater.WindowStyle = 1  # 7 - Minimized, 3 - Maximized, 1 - Normal
+    shortcut_updater.save()
+
+cg_cfg_shortcut_check = os.path.exists(cg_cfg_shortcut_path)
+if not cg_cfg_shortcut_check:
+    shortcut_cg_cfg = shell.CreateShortCut(cg_cfg_shortcut_path)
+    shortcut_cg_cfg.WorkingDirectory = os.path.abspath(game_path)
+    shortcut_cg_cfg.Targetpath = os.path.abspath("configure_custom_graphics.exe")
+    shortcut_cg_cfg.WindowStyle = 1  # 7 - Minimized, 3 - Maximized, 1 - Normal
+    shortcut_cg_cfg.save()
+
 print("Installation Completed!")
-pymsgbox.alert("Installation Completed")
+pymsgbox.alert("Installation Completed" +
+               "\n\nIt seems you are using this installer version for the first time. \nYou can now use the Updater "
+               "and Custom Graphic Configurator in the game directory. You can move the Installer anywhere you like."
+               * (not cg_cfg_shortcut_check), "BootstrapMod - Installation Completed")
+
 os.startfile(game_path)
