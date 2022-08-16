@@ -233,33 +233,23 @@ for map_to_copy in maps_to_copy:
                  f"{game_path}\\mapsExtreme")
 
 # STEP 8: ACQUIRE CUSTOM GRAPHICS
-cg_firsttime = not os.path.exists("CustomGraphics")
 if os.path.exists(f"{working_directory}\\BootstrapMultiplayerSetup\\CustomGraphics.zip"):
     with zipfile.ZipFile(f"{working_directory}\\BootstrapMultiplayerSetup\\customGraphics.zip") as zip_ref:
         zip_ref.extractall()
-    if cg_firsttime:
         for cg_folder in os.listdir("CustomGraphics"):
-            ref_checksum = original_gm1_md5[cg_folder]
-            cg_filename = "OriginalFireflyTexture.gm1"
+            cg_filename = "LocallyStoredTexture.gm1"
             with open(f"{game_path}\\gm\\{cg_folder}.gm1", 'rb') as gm1file_reference:
                 cg_file_checksum = hashlib.md5(gm1file_reference.read()).hexdigest()
-                cg_is_original = cg_file_checksum == ref_checksum
-                if cg_is_original:
+                for cg_file in os.listdir(f"CustomGraphics\\{cg_folder}"):
+                    with open(f"CustomGraphics\\{cg_folder}\\{cg_file}", "rb") as cg_file_check:
+                        if hashlib.md5(cg_file_check.read()).hexdigest() == cg_file_checksum:
+                            break  # it is one of the known custom texture files
+                else:
+                    i = 0
+                    while cg_filename in os.listdir(f"CustomGraphics\\{cg_folder}"):
+                        cg_filename = f"LocallyStoredTexture_{i}.gm1"
                     sp.run(f"copy {game_path}\\gm\\{cg_folder}.gm1 "
                            f"CustomGraphics\\{cg_folder}\\{cg_filename} > NUL", shell=True)
-                else:
-                    for cg_file in os.listdir(f"CustomGraphics\\{cg_folder}"):
-                        with open(f"CustomGraphics\\{cg_folder}\\{cg_file}", "rb") as cg_file_check:
-                            if hashlib.md5(cg_file_check.read()).hexdigest() == cg_file_checksum:
-                                break  # it is one of the known custom texture files
-                    else:  # it is a completely different custom texture file
-                        cg_filename = "UnknownCustomTexture.gm1"
-                        i = 0
-                        while cg_filename not in os.listdir(f"CustomGraphics\\{cg_folder}"):
-                            cg_filename = f"UnknownCustomTexture_{i}.gm1"
-
-                        sp.run(f"copy {game_path}\\gm\\{cg_folder}.gm1 "
-                               f"CustomGraphics\\{cg_folder}\\{cg_filename} > NUL", shell=True)
 
 
 # STEP 9: VOILA, save config
