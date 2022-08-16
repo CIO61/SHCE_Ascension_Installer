@@ -8,13 +8,12 @@ import msvcrt
 import os
 
 colorama.init()
-offset = 0
+offset = 0  # scroll point of options menu
 
 exedir = os.path.dirname(sys.executable)
 if "Stronghold_Crusader_Extreme.exe" not in os.listdir():
     sys.exit()
 
-exedir = os.path.dirname(__file__)
 cgf = "\\CustomGraphics"
 option_list = {folder: [f for f in os.listdir(f"{exedir}{cgf}\\{folder}")]
                for folder in os.listdir(f"{exedir}{cgf}")}
@@ -88,8 +87,8 @@ def input_loop():
 
 
 print(f"Welcome to custom graphic configurator.\n"
-      f"Use {Fore.CYAN}number keys{Fore.RESET} on your keyboard to apply the options.\n "
-      f"Use arrow keys to scroll within the menu")
+      f"Use {Fore.CYAN}number keys{Fore.RESET} on your keyboard to apply the options.\n"
+      f"Use {Fore.MAGENTA}arrow keys{Fore.RESET} to scroll within the menu")
 check_selection()
 print_status()
 input_loop()

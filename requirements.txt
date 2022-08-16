@@ -1,4 +1,5 @@
 py2exe~=0.10.4.1
 PyMsgBox~=1.0.9
 pywin32=301
+requests
 colorama>=0.4.5

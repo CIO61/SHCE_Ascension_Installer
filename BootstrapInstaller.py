@@ -5,19 +5,22 @@ import traceback
 import threading
 import time
 import json
-from urllib import request
-from urllib.error import URLError
+
+import colorama
 import pymsgbox
+import requests
 import win32con
 import shutil
 import zipfile
 import hashlib
 
 # noinspection PyPackageRequirements
+from colorama import Fore
 from win32gui import GetOpenFileNameW
 # noinspection PyPackageRequirements
 from win32com import client
 
+colorama.init()
 configfile_path = f"installer_config.json"
 original_maps_set = {
     "Best_Friends.map", "Bird_in_flight.map", "Coastal_Trap.map", "Crossroads.map", "Divided.map", "Enclosure.map",
@@ -47,8 +50,27 @@ def get_portable_git():
     if not os.path.exists(f"{working_directory}\\{portable_git_filename}"):
         try:
             url = "https://github.com/git-for-windows/git/releases/download/v2.33.0.windows.2/PortableGit-2.33.0.2-32-bit.7z.exe"
-            request.urlretrieve(url, f"{working_directory}\\{portable_git_filename}")
-        except URLError:
+            file_name = f"{working_directory}\\{portable_git_filename}"
+            with open(file_name, "wb") as f:
+                print("Downloading Portable Git")
+                response = requests.get(url, stream=True)
+                total_length = response.headers.get('content-length')
+
+                if total_length is None:  # no content length header
+                    f.write(response.content)
+                else:
+                    dl = 0
+                    total_length = int(total_length)
+                    for data in response.iter_content(chunk_size=4096):
+                        dl += len(data)
+                        f.write(data)
+                        percentage = dl / total_length
+                        done = int(50 * percentage)
+                        forecolor = Fore.YELLOW if done != 50 else Fore.GREEN
+                        sys.stdout.write(f"\r[{forecolor}{'=' * done}{' ' * (50 - done)}{Fore.RESET}] [{percentage * 100:.2f}%]")
+                        sys.stdout.flush()
+
+        except requests.RequestException:
             with open(f"{working_directory}\\errors.log", "a") as errorfile:
                 error_text = traceback.format_exc()
                 pymsgbox.alert("Some Error Occured while setting up. A text file will now open containing details "
@@ -135,16 +157,7 @@ if git_checker.returncode == 0:
 else:
     if not os.path.exists(f"{working_directory}\\PortableGit"):
         print("Performing First Time Setup... This will take a while, please wait!")
-        portable_git_getter = threading.Thread(target=get_portable_git)
-        portable_git_getter.start()
-
-        print("Preparing update system.")
-        time.sleep(2)
-        while portable_git_getter.is_alive():
-            time.sleep(1)
-            print(".", end="")
-        else:
-            print("\n Done!")
+        get_portable_git()
     git_path = f"{working_directory}\\PortableGit\\cmd\\git.exe"
 
 # STEP 4: GET BOOTSTRAP MP SETUP
@@ -233,8 +246,8 @@ for map_to_copy in maps_to_copy:
                  f"{game_path}\\mapsExtreme")
 
 # STEP 8: ACQUIRE CUSTOM GRAPHICS
-if os.path.exists(f"{working_directory}\\BootstrapMultiplayerSetup\\CustomGraphics.zip"):
-    with zipfile.ZipFile(f"{working_directory}\\BootstrapMultiplayerSetup\\customGraphics.zip") as zip_ref:
+if os.path.exists(cg_zip := f"{working_directory}\\BootstrapMultiplayerSetup\\CustomGraphics.zip"):
+    with zipfile.ZipFile(cg_zip) as zip_ref:
         zip_ref.extractall()
         for cg_folder in os.listdir("CustomGraphics"):
             cg_filename = "LocallyStoredTexture.gm1"
