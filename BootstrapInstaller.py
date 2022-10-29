@@ -30,7 +30,7 @@ def fc(color, text):
 
 
 def check_installer_version():
-    version = "v3.0"
+    version = "v3.1"
     l_version_page = requests.get("https://github.com/CIO61/SHCE_Bootstrap_Installer/releases/latest")
     l_version = l_version_page.url.rpartition("/")[2]
     if version != l_version:
@@ -100,6 +100,7 @@ def download_update(preview=False):
         pull_update_kw = {"cwd": f"{game_path}\\BootstrapMultiplayerSetup", "creationflags": sp.CREATE_NO_WINDOW}
         sp.run(f"{git_path} reset --hard", **pull_update_kw)
         print("Checking for setup updates", end="")
+        sys.stdout.flush()
         if preview:
             print("[Preview Version]")
             if "preview" not in sp.run(f"{git_path} remote", capture_output=True, text=True, **pull_update_kw).stdout.splitlines():
@@ -113,9 +114,9 @@ def download_update(preview=False):
             sp.run(f"{git_path} checkout main", **pull_update_kw)
             updcheck = sp.run(f"{git_path} pull", capture_output=True, text=True, **pull_update_kw)
             if updcheck.stdout.strip() == "Already up to date.":
-                print("Already on the latest version.")
+                print("\nAlready on the latest version.")
             else:
-                print("Done Checking Updates.")
+                print("\nDone Checking Updates.")
 
 
 def install_mod():
