@@ -35,7 +35,7 @@ def check_installer_version():
     l_version = l_version_page.url.rpartition("/")[2]
     if version != l_version:
         try:
-            download_file_w_progressbar("https://github.com/CIO61/SHCE_Bootstrap_Installer/releases/download/latest/update.zip",
+            download_file_w_progressbar("https://github.com/CIO61/SHCE_Bootstrap_Installer/releases/latest/download/update.zip",
                                         "update.zip", "Downloading Update")
             if os.path.exists("update.zip"):
                 with open("update.zip", "rb") as updatefile:
