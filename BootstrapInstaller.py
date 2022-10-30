@@ -30,7 +30,7 @@ def fc(color, text):
 
 
 def check_installer_version():
-    version = "v3.1"
+    version = "v3.2"
     l_version_page = requests.get("https://github.com/CIO61/SHCE_Bootstrap_Installer/releases/latest")
     l_version = l_version_page.url.rpartition("/")[2]
     if version != l_version:
@@ -104,7 +104,7 @@ def download_update(preview=False):
         if preview:
             print("[Preview Version]")
             if "preview" not in sp.run(f"{git_path} remote", capture_output=True, text=True, **pull_update_kw).stdout.splitlines():
-                sp.run(f"{git_path} remote add preview https://github.com/Altaruss28/BootstrapMultiplayerSetup.git")
+                sp.run(f"{git_path} remote add preview https://github.com/Altaruss28/BootstrapMultiplayerSetup.git", **pull_update_kw)
                 sp.run(f"{git_path} checkout -b preview", **pull_update_kw)
             else:
                 sp.run(f"{git_path} checkout preview", **pull_update_kw)
