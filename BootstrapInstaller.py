@@ -2,6 +2,7 @@ import os
 import subprocess as sp
 import sys
 import traceback
+from functools import partial
 
 import colorama
 import pymsgbox
@@ -29,8 +30,13 @@ def fc(color, text):
     return f'{Fore.__dict__.get(color.upper(), "RESET")}{text}{Fore.RESET}'
 
 
+bad = partial(fc, "red")
+neutral = partial(fc, "yellow")
+good = partial(fc, "green")
+
+
 def check_installer_version():
-    version = "v3.2"
+    version = "v3.3"
     l_version_page = requests.get("https://github.com/CIO61/SHCE_Bootstrap_Installer/releases/latest")
     l_version = l_version_page.url.rpartition("/")[2]
     if version != l_version:
@@ -91,28 +97,29 @@ def get_portable_git():
 
 def download_update(preview=False):
     repo_addr = "https://github.com/Krarilotus/BootstrapMultiplayerSetup.git"
+    pull_upd = partial(sp.run, cwd=f"{game_path}\\BootstrapMultiplayerSetup", creationflags=sp.CREATE_NO_WINDOW)
     if not os.path.exists(f"{game_path}\\BootstrapMultiplayerSetup"):
         print("Downloading Bootstrap setup [First Time].")
         sp.run(f"{git_path} clone {repo_addr}", cwd=game_path)
     else:
         if os.path.exists(uninsjson := f"{game_path}\\BootstrapMultiplayerSetup\\uninstall.json"):
             os.remove(uninsjson)
-        pull_update_kw = {"cwd": f"{game_path}\\BootstrapMultiplayerSetup", "creationflags": sp.CREATE_NO_WINDOW}
-        sp.run(f"{git_path} reset --hard", **pull_update_kw)
         print("Checking for setup updates", end="")
         sys.stdout.flush()
         if preview:
             print("[Preview Version]")
-            if "preview" not in sp.run(f"{git_path} remote", capture_output=True, text=True, **pull_update_kw).stdout.splitlines():
-                sp.run(f"{git_path} remote add preview https://github.com/Altaruss28/BootstrapMultiplayerSetup.git", **pull_update_kw)
-                sp.run(f"{git_path} checkout -b preview", **pull_update_kw)
+            if "preview" not in pull_upd(f"{git_path} remote", capture_output=True, text=True).stdout.splitlines():
+                pull_upd(f"{git_path} remote add preview https://github.com/Altaruss28/BootstrapMultiplayerSetup.git")
+                pull_upd(f"{git_path} checkout -b preview")
             else:
-                sp.run(f"{git_path} checkout preview", **pull_update_kw)
-            sp.run(f"{git_path} pull preview main", **pull_update_kw)
+                pull_upd(f"{git_path} checkout preview")
+                pull_upd(f"{git_path} reset --hard")
+            pull_upd(f"{git_path} pull preview main")
             print("Switched to preview version")
         else:
-            sp.run(f"{git_path} checkout main", **pull_update_kw)
-            updcheck = sp.run(f"{git_path} pull", capture_output=True, text=True, **pull_update_kw)
+            pull_upd(f"{git_path} checkout main")
+            pull_upd(f"{git_path} reset --hard origin/main")
+            updcheck = pull_upd(f"{git_path} pull", capture_output=True, text=True)
             if updcheck.stdout.strip() == "Already up to date.":
                 print("\nAlready on the latest version.")
             else:
@@ -120,18 +127,43 @@ def download_update(preview=False):
 
 
 def install_mod():
-    print(f"Installing Bootstrap mode to {game_path}")
+    print(f"Installing UCP...")
     with open(f"{game_path}\\BootstrapMultiplayerSetup\\version.txt") as versionfile:
-        version = versionfile.read()
+        version = versionfile.read().strip()
     print(f"Version: {version}")
 
     repo_path = f"{game_path}\\BootstrapMultiplayerSetup"
 
-    p = sp.run(f'"{repo_path}\\installSetup.bat"', cwd=repo_path, creationflags=sp.CREATE_NEW_CONSOLE)
+    # apply UCP
+    ucp = sp.Popen(f'{repo_path}\\DONTOPEN\\UnofficialCrusaderPatchCLI.exe "--language=1" "--path={game_path}"',
+                   cwd=f"{repo_path}\\DONTOPEN", text=True, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE)
 
-    if p.returncode:
-        print("Installation Failed!")
-        pymsgbox.alert("Installation Failed!")
+    line = ucp.stdout.readline()
+    while line:
+        if "ucp successfully installed" in line.lower():
+            print(good("UCP successfully installed"))
+            break
+        if "Custom AIVs detected." in line:
+            line, err = ucp.communicate("delete\n")
+        else:
+            line = ucp.stdout.readline()
+    ucp.wait()
+
+    if ucp.returncode:
+        print(bad("UCP Installation Failed!"))
+        pymsgbox.alert("UCP Installation Failed!")
+        sys.exit(1)
+
+    print(f"Installing Balance patch...")
+    # apply mod patch
+    if "ProgramFiles(x86)" in os.environ:
+        mod = sp.run(f'{repo_path}\\mod.exe', cwd=repo_path)
+    else:
+        mod = sp.run(f'{repo_path}\\mod_32.exe', cwd=repo_path)
+
+    if mod.returncode:
+        print(bad("Balance Patch Failed!"))
+        pymsgbox.alert("Balance Patch Failed!")
         sys.exit(1)
 
 
@@ -212,7 +244,7 @@ def conclude():
         shortcut_cg_cfg.WindowStyle = 1  # 7 - Minimized, 3 - Maximized, 1 - Normal
         shortcut_cg_cfg.save()
 
-    print("Installation Completed!")
+    print(good("Installation Completed!"))
     pymsgbox.alert("Installation Completed" +
                    "\n\nIt seems you are using this installer version for the first time. \nYou can now use the "
                    "Updater and Custom Graphic Configurator in the game directory. You can move the Installer "
@@ -226,7 +258,7 @@ if __name__ == '__main__':
     check_installer_version()
     game_found = ("Stronghold_Crusader_Extreme.exe" in os.listdir(game_path))
     if not game_found:
-        print(fc("red", "Bootstrap Mod is intended to be played with Stronghold Crusader Extreme. "
+        print(bad("Bootstrap Mod is intended to be played with Stronghold Crusader Extreme. "
               "Put the installer in a game folder with Stronghold_Crusader_Extreme.exe."))
         pymsgbox.alert("Bootstrap Mod is intended to be played with Stronghold Crusader Extreme. "
                        "Put the installer in a game folder with Stronghold_Crusader_Extreme.exe.", "BootstrapMod")
