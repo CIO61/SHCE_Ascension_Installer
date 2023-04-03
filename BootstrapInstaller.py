@@ -36,7 +36,7 @@ good = partial(fc, "green")
 
 
 def check_installer_version():
-    version = "v3.3"
+    version = "v3.3b"
     l_version_page = requests.get("https://github.com/CIO61/SHCE_Bootstrap_Installer/releases/latest")
     l_version = l_version_page.url.rpartition("/")[2]
     if version != l_version:
@@ -46,10 +46,10 @@ def check_installer_version():
             if os.path.exists("update.zip"):
                 with open("update.zip", "rb") as updatefile:
                     if len(updatefile.read()) > 0:
-                        os.startfile("selfupdate.exe")
+                        with open("leftover_command.txt", "w") as cmdfile:
+                            cmdfile.write(" ".join(sys.argv[1:]))
+                        sp.Popen('timeout 1 > NUL && selfupdate.exe', shell=True)
                         sys.exit()
-            pid = os.getpid()
-            print(pid)
         except requests.RequestException:
             pass
         pass  # update available
@@ -128,10 +128,6 @@ def download_update(preview=False):
 
 def install_mod():
     print(f"Installing UCP...")
-    with open(f"{game_path}\\BootstrapMultiplayerSetup\\version.txt") as versionfile:
-        version = versionfile.read().strip()
-    print(f"Version: {version}")
-
     repo_path = f"{game_path}\\BootstrapMultiplayerSetup"
 
     # apply UCP
@@ -154,8 +150,11 @@ def install_mod():
         pymsgbox.alert("UCP Installation Failed!")
         sys.exit(1)
 
-    print(f"Installing Balance patch...")
     # apply mod patch
+    print(f"Installing balance patch...")
+    with open(f"{game_path}\\BootstrapMultiplayerSetup\\version.txt") as versionfile:
+        version = versionfile.read().strip()
+    print(neutral(f"Version: {version}"))
     if "ProgramFiles(x86)" in os.environ:
         mod = sp.run(f'{repo_path}\\mod.exe', cwd=repo_path)
     else:
@@ -253,7 +252,12 @@ def conclude():
 
 
 if __name__ == '__main__':
-    preview_mode = "preview" in sys.argv
+    if os.path.exists("leftover_command.txt"):
+        with open("leftover_command.txt") as cmdfile:
+            preview_mode = "preview" in cmdfile.read()
+        os.remove("leftover_command.txt")
+    else:
+        preview_mode = "preview" in sys.argv
     colorama.init()
     check_installer_version()
     game_found = ("Stronghold_Crusader_Extreme.exe" in os.listdir(game_path))
