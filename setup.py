@@ -1,17 +1,7 @@
-from distutils.core import setup
 import py2exe
 
-setup(console=[
-    {
-        "script": "BootstrapInstaller.py",
-        "icon_resources": [(0, "icon.ico")]
-    },
-    {
-        "script": "configure_custom_graphics.py",
-        "icon_resources": [(0, "icon.ico")]
-    },
-    {
-        "script": "selfupdate.py",
-        "icon_resources": [(0, "icon.ico")]
-    }
-])
+py2exe.freeze(
+    console=[{"script": "BootstrapInstaller.py"},
+             {"script": "configure_custom_graphics.py"},
+             {"script": "selfupdate.py"}]
+)

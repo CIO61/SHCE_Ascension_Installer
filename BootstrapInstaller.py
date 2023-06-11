@@ -36,15 +36,15 @@ good = partial(fc, "green")
 
 
 def check_installer_version():
-    version = "v3.3b"
+    version = "v4.0"
     l_version_page = requests.get("https://github.com/CIO61/SHCE_Bootstrap_Installer/releases/latest")
     l_version = l_version_page.url.rpartition("/")[2]
     if version != l_version:
         try:
-            download_file_w_progressbar("https://github.com/CIO61/SHCE_Bootstrap_Installer/releases/latest/download/update.zip",
-                                        "update.zip", "Downloading Update")
-            if os.path.exists("update.zip"):
-                with open("update.zip", "rb") as updatefile:
+            download_file_w_progressbar("https://github.com/CIO61/SHCE_Bootstrap_Installer/releases/latest/download/update_v2.zip",
+                                        "update_v2.zip", "Downloading Update")
+            if os.path.exists("update_v2.zip"):
+                with open("update_v2.zip", "rb") as updatefile:
                     if len(updatefile.read()) > 0:
                         with open("leftover_command.txt", "w") as cmdfile:
                             cmdfile.write(" ".join(sys.argv[1:]))
@@ -95,40 +95,29 @@ def get_portable_git():
     sp.run(f"PortableGit-2.33.0.2-32-bit.7z.exe -y -o \"PortableGit\"")
 
 
-def download_update(preview=False):
-    repo_addr = "https://github.com/Krarilotus/BootstrapMultiplayerSetup.git"
-    pull_upd = partial(sp.run, cwd=f"{game_path}\\BootstrapMultiplayerSetup", creationflags=sp.CREATE_NO_WINDOW)
-    if not os.path.exists(f"{game_path}\\BootstrapMultiplayerSetup"):
-        print("Downloading Bootstrap setup [First Time].")
-        sp.run(f"{git_path} clone {repo_addr}", cwd=game_path)
+def download_update():
+    pull_upd = partial(sp.run, cwd=f"{game_path}\\{workfolder}", creationflags=sp.CREATE_NO_WINDOW)
+
+    if not os.path.exists(f"{game_path}\\{workfolder}"):
+        print("Downloading Bootstrap setup." + " [Preview Version]" * preview_mode)
+        sp.run(f"{git_path} clone {repo_addr} {workfolder}", cwd=game_path)
     else:
-        if os.path.exists(uninsjson := f"{game_path}\\BootstrapMultiplayerSetup\\uninstall.json"):
+        if os.path.exists(uninsjson := f"{game_path}\\{workfolder}\\uninstall.json"):
             os.remove(uninsjson)
-        print("Checking for setup updates", end="")
+        print("Checking for setup updates" + " [Preview Version]"*preview_mode, end="")
         sys.stdout.flush()
-        if preview:
-            print("[Preview Version]")
-            if "preview" not in pull_upd(f"{git_path} remote", capture_output=True, text=True).stdout.splitlines():
-                pull_upd(f"{git_path} remote add preview https://github.com/Altaruss28/BootstrapMultiplayerSetup.git")
-                pull_upd(f"{git_path} checkout -b preview")
-            else:
-                pull_upd(f"{git_path} checkout preview")
-                pull_upd(f"{git_path} reset --hard")
-            pull_upd(f"{git_path} pull preview main")
-            print("Switched to preview version")
+        pull_upd(f"{git_path} reset --hard", stdout=sp.DEVNULL)
+        pull_upd(f"{git_path} clean -fdx", stdout=sp.DEVNULL)
+        updcheck = pull_upd(f"{git_path} pull", capture_output=True, text=True)
+        if updcheck.stdout.strip() == "Already up to date.":
+            print("\nAlready on the latest version.")
         else:
-            pull_upd(f"{git_path} checkout main")
-            pull_upd(f"{git_path} reset --hard origin/main")
-            updcheck = pull_upd(f"{git_path} pull", capture_output=True, text=True)
-            if updcheck.stdout.strip() == "Already up to date.":
-                print("\nAlready on the latest version.")
-            else:
-                print("\nDone Checking Updates.")
+            print("\nDone Checking Updates.")
 
 
 def install_mod():
     print(f"Installing UCP...")
-    repo_path = f"{game_path}\\BootstrapMultiplayerSetup"
+    repo_path = f"{game_path}\\{workfolder}"
 
     # apply UCP
     ucp = sp.Popen(f'{repo_path}\\DONTOPEN\\UnofficialCrusaderPatchCLI.exe "--language=1" "--path={game_path}"',
@@ -152,7 +141,7 @@ def install_mod():
 
     # apply mod patch
     print(f"Installing balance patch...")
-    with open(f"{game_path}\\BootstrapMultiplayerSetup\\version.txt") as versionfile:
+    with open(f"{game_path}\\{workfolder}\\version.txt") as versionfile:
         version = versionfile.read().strip()
     print(neutral(f"Version: {version}"))
     if "ProgramFiles(x86)" in os.environ:
@@ -173,7 +162,7 @@ def get_maps():
     matching_maps = files_in_dir & original_maps_set
     other_maps = files_in_dir - original_maps_set
 
-    maps_to_copy = set(os.listdir(f"{game_path}\\BootstrapMultiplayerSetup\\DONTOPEN\\mapsExtreme"))
+    maps_to_copy = set(os.listdir(f"{game_path}\\{workfolder}\\DONTOPEN\\mapsExtreme"))
     maps_to_backup = other_maps - maps_to_copy
     for mapfile_original in matching_maps:
         pth_original_maps = f"{game_path}\\mapsExtreme\\original"
@@ -184,17 +173,14 @@ def get_maps():
         pth_custom_maps = f"{game_path}\\mapsExtreme\\backup"
         if not os.path.exists(pth_custom_maps):
             os.makedirs(pth_custom_maps)
-        try:
-            shutil.move(f"{game_path}\\mapsExtreme\\{mapfile_custom}", pth_custom_maps)
-        except shutil.Error:
-            pass
+        sp.run(f'move /Y "{game_path}\\mapsExtreme\\{mapfile_custom}" "{pth_custom_maps}"',
+               shell=True, stdout=sp.DEVNULL)
     for map_to_copy in maps_to_copy:
-        shutil.copy2(f"{game_path}\\BootstrapMultiplayerSetup\\DONTOPEN\\mapsExtreme\\{map_to_copy}",
-                     f"{game_path}\\mapsExtreme")
+        shutil.copy2(f"{game_path}\\{workfolder}\\DONTOPEN\\mapsExtreme\\{map_to_copy}", f"{game_path}\\mapsExtreme")
 
 
 def get_custom_graphics():
-    if os.path.exists(cg_zip := f"{game_path}\\BootstrapMultiplayerSetup\\CustomGraphics.zip"):
+    if os.path.exists(cg_zip := f"{game_path}\\{workfolder}\\CustomGraphics.zip"):
         with zipfile.ZipFile(cg_zip) as zip_ref:
             zip_ref.extractall()
             for cg_folder in os.listdir("CustomGraphics"):
@@ -220,28 +206,30 @@ def conclude():
     preview_shortcut_path = os.path.abspath(game_path + "\\BootstrapMod - Preview Version.lnk")
     cg_cfg_shortcut_path = os.path.abspath(game_path + "\\BootstrapMod - CustomGraphicConfigurator.lnk")
 
+    def create_shortcut(shortcut_path, *,
+                        working_dir=os.path.abspath(""),
+                        arguments="",
+                        target_path=sys.executable,
+                        icon_path="icon.ico"):
+        shortcut_file = shell.CreateShortCut(shortcut_path)
+        shortcut_file.WorkingDirectory = working_dir
+        shortcut_file.Arguments = arguments
+        shortcut_file.Targetpath = target_path
+        shortcut_file.IconLocation = icon_path
+        shortcut_file.WindowStyle = 1  # 7 - Minimized, 3 - Maximized, 1 - Normal
+        shortcut_file.save()
+
     if not os.path.exists(updater_shortcut_path):
-        shortcut_updater = shell.CreateShortCut(updater_shortcut_path)
-        shortcut_updater.WorkingDirectory = os.path.abspath("")
-        shortcut_updater.Targetpath = sys.executable
-        shortcut_updater.WindowStyle = 1  # 7 - Minimized, 3 - Maximized, 1 - Normal
-        shortcut_updater.save()
+        create_shortcut(updater_shortcut_path)
 
     if not os.path.exists(preview_shortcut_path):
-        shortcut_updater = shell.CreateShortCut(preview_shortcut_path)
-        shortcut_updater.WorkingDirectory = os.path.abspath("")
-        shortcut_updater.Arguments = "preview"
-        shortcut_updater.Targetpath = sys.executable
-        shortcut_updater.WindowStyle = 1  # 7 - Minimized, 3 - Maximized, 1 - Normal
-        shortcut_updater.save()
+        create_shortcut(preview_shortcut_path, arguments="preview")
 
     cg_cfg_shortcut_check = os.path.exists(cg_cfg_shortcut_path)
     if not cg_cfg_shortcut_check:
-        shortcut_cg_cfg = shell.CreateShortCut(cg_cfg_shortcut_path)
-        shortcut_cg_cfg.WorkingDirectory = os.path.abspath(game_path)
-        shortcut_cg_cfg.Targetpath = os.path.abspath("configure_custom_graphics.exe")
-        shortcut_cg_cfg.WindowStyle = 1  # 7 - Minimized, 3 - Maximized, 1 - Normal
-        shortcut_cg_cfg.save()
+        create_shortcut(cg_cfg_shortcut_path,
+                        working_dir=os.path.abspath(game_path),
+                        target_path=os.path.abspath("configure_custom_graphics.exe"))
 
     print(good("Installation Completed!"))
     pymsgbox.alert("Installation Completed" +
@@ -258,6 +246,12 @@ if __name__ == '__main__':
         os.remove("leftover_command.txt")
     else:
         preview_mode = "preview" in sys.argv
+
+    repo_prev = "https://github.com/Altaruss28/BootstrapMultiplayerSetup.git"
+    repo_main = "https://github.com/Krarilotus/BootstrapMultiplayerSetup.git"
+    repo_addr = repo_prev if preview_mode else repo_main
+    workfolder = "BootstrapMultiplayerSetup_preview" if preview_mode else "BootstrapMultiplayerSetup"
+
     colorama.init()
     check_installer_version()
     game_found = ("Stronghold_Crusader_Extreme.exe" in os.listdir(game_path))
@@ -276,7 +270,7 @@ if __name__ == '__main__':
             get_portable_git()
         git_path = f"PortableGit\\cmd\\git.exe"
 
-    download_update(preview_mode)
+    download_update()
     install_mod()
     get_maps()
     get_custom_graphics()
