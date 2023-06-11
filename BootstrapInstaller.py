@@ -210,7 +210,7 @@ def conclude():
                         working_dir=os.path.abspath(""),
                         arguments="",
                         target_path=sys.executable,
-                        icon_path="icon.ico"):
+                        icon_path=os.path.abspath("icon.ico")):
         shortcut_file = shell.CreateShortCut(shortcut_path)
         shortcut_file.WorkingDirectory = working_dir
         shortcut_file.Arguments = arguments
