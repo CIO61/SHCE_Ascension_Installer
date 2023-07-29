@@ -81,7 +81,7 @@ def input_loop():
             selection[category] %= len(option_list[category])
             sel_idx = selection[category]
             file = option_list[category][sel_idx]
-            subprocess.run(f"copy /Y {exedir}{cgf}\\{category}\\{file} gm\\{category}.gm1 > NUL", shell=True)
+            subprocess.run(f'copy /Y "{exedir}{cgf}\\{category}\\{file}" "gm\\{category}.gm1" > NUL', shell=True)
 
         print_status(rewind=True)
 

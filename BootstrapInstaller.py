@@ -195,8 +195,8 @@ def get_custom_graphics():
                         i = 0
                         while cg_filename in os.listdir(f"CustomGraphics\\{cg_folder}"):
                             cg_filename = f"LocallyStoredTexture_{i}.gm1"
-                        sp.run(f"copy {game_path}\\gm\\{cg_folder}.gm1 "
-                               f"CustomGraphics\\{cg_folder}\\{cg_filename} > NUL", shell=True)
+                        sp.run(f'copy "{game_path}\\gm\\{cg_folder}.gm1" '
+                               f'"CustomGraphics\\{cg_folder}\\{cg_filename}" > NUL', shell=True)
 
 
 def conclude():
