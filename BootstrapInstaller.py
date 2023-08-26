@@ -36,7 +36,7 @@ good = partial(fc, "green")
 
 
 def check_installer_version():
-    version = "v4.0"
+    version = "v4.1"
     l_version_page = requests.get("https://github.com/CIO61/SHCE_Bootstrap_Installer/releases/latest")
     l_version = l_version_page.url.rpartition("/")[2]
     if version != l_version:
