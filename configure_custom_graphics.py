@@ -1,5 +1,7 @@
 import filecmp
-import subprocess
+import subprocess as sp
+from collections import defaultdict
+
 import sys
 
 import colorama
@@ -10,13 +12,29 @@ import os
 colorama.init()
 offset = 0  # scroll point of options menu
 
-exedir = os.path.dirname(sys.executable)
+cgf = "AscensionMod\\Graphics"
+cgf_src = "Ascension\\Graphics"
+backupdir = f"{cgf}\\local"
+os.makedirs(cgf, exist_ok=True)
+
 if "Stronghold_Crusader_Extreme.exe" not in os.listdir():
     sys.exit()
 
-cgf = "\\CustomGraphics"
-option_list = {folder: [f for f in os.listdir(f"{exedir}{cgf}\\{folder}")]
-               for folder in os.listdir(f"{exedir}{cgf}")}
+option_list = defaultdict(list)
+sp.run(f"robocopy /E {cgf_src} {cgf}", stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+for folder in os.listdir(cgf):
+    for file in [_f.removesuffix(".gm1") for _f in os.listdir(f"{cgf}\\{folder}")]:
+        option_list[file].append(folder)
+
+
+for key, val in list(option_list.items()):
+    if len(val) < 2:
+        option_list.pop(key)
+
+
+if not os.path.exists(f"{backupdir}"):
+    sp.run(f"robocopy gm {backupdir}", stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+
 
 selection = {}
 
@@ -25,7 +43,7 @@ def check_selection():
     for key, val in option_list.items():
         keepcheck = True
         for j, item in enumerate(val):
-            same = keepcheck and filecmp.cmp(f"{exedir}{cgf}\\{key}\\{item}", f"gm\\{key}.gm1")
+            same = keepcheck and filecmp.cmp(f"{cgf}\\{item}\\{key}.gm1", f"gm\\{key}.gm1")
             if same:
                 keepcheck = False
                 selection[key] = j
@@ -40,7 +58,7 @@ def prepare_text():
         item_txts = []
         for j, item in enumerate(_v):
             color = Fore.GREEN if selection[_k] == j else Fore.RED
-            item_txts.append(f"{color}{item.rpartition('.')[0]}{Fore.RESET}")
+            item_txts.append(f"{color}{item}{Fore.RESET}")
         number = f"{Fore.CYAN}{i-offset+1}{Fore.RESET}" if (0 < i-offset+1 <= 9) else " "
         ret_text += f"[{number}] {_k}: [{' '.join(item_txts)}]\n"
     return ret_text
@@ -81,7 +99,10 @@ def input_loop():
             selection[category] %= len(option_list[category])
             sel_idx = selection[category]
             file = option_list[category][sel_idx]
-            subprocess.run(f'copy /Y "{exedir}{cgf}\\{category}\\{file}" "gm\\{category}.gm1" > NUL', shell=True)
+            src_file = f"{cgf}\\{file}\\{category}.gm1"
+            tgt_file = f"gm\\{category}.gm1"
+            same = filecmp.cmp(src_file, tgt_file)
+            sp.run(f'copy /Y "{src_file}" "{tgt_file}" > NUL', shell=True)
 
         print_status(rewind=True)
 

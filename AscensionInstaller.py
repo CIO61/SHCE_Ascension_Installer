@@ -37,11 +37,12 @@ good = partial(fc, "green")
 
 def check_installer_version():
     version = "v5.0"
-    l_version_page = requests.get("https://github.com/CIO61/SHCE_Ascension_Installer/releases/latest")
+    source_address = "https://github.com/CIO61/SHCE_Ascension_Installer"
+    l_version_page = requests.get(f"{source_address}/releases/latest")
     l_version = l_version_page.url.rpartition("/")[2]
     if version != l_version:
         try:
-            download_file_w_progressbar("https://github.com/CIO61/SHCE_Ascension_Installer/releases/latest/download/update_v2.zip",
+            download_file_w_progressbar(f"{source_address}/releases/latest/download/update_v2.zip",
                                         "update_v2.zip", "Downloading Update")
             if os.path.exists("update_v2.zip"):
                 with open("update_v2.zip", "rb") as updatefile:
@@ -99,12 +100,12 @@ def download_update():
     pull_upd = partial(sp.run, cwd=f"{game_path}\\{workfolder}", creationflags=sp.CREATE_NO_WINDOW)
 
     if not os.path.exists(f"{game_path}\\{workfolder}"):
-        print("Downloading Ascension setup." + " [Preview Version]" * preview_mode)
+        print("Downloading Ascension setup.")
         sp.run(f"{git_path} clone {repo_addr} {workfolder}", cwd=game_path)
     else:
         if os.path.exists(uninsjson := f"{game_path}\\{workfolder}\\uninstall.json"):
             os.remove(uninsjson)
-        print("Checking for setup updates" + " [Preview Version]"*preview_mode, end="")
+        print("Checking for setup updates", end="")
         sys.stdout.flush()
         pull_upd(f"{git_path} reset --hard", stdout=sp.DEVNULL)
         pull_upd(f"{git_path} clean -fdx", stdout=sp.DEVNULL)
@@ -120,8 +121,8 @@ def install_mod():
     repo_path = f"{game_path}\\{workfolder}"
 
     # apply UCP
-    ucp = sp.Popen(f'{repo_path}\\DONTOPEN\\UnofficialCrusaderPatchCLI.exe "--language=1" "--path={game_path}"',
-                   cwd=f"{repo_path}\\DONTOPEN", text=True, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE)
+    ucp = sp.Popen(f'{repo_path}\\UCP\\UnofficialCrusaderPatchCLI.exe "--language=1" "--path={game_path}"',
+                   cwd=f"{repo_path}\\UCP", text=True, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE)
 
     line = ucp.stdout.readline()
     while line:
@@ -141,13 +142,11 @@ def install_mod():
 
     # apply mod patch
     print(f"Installing balance patch...")
-    with open(f"{game_path}\\{workfolder}\\version.txt") as versionfile:
+    with open(f"{game_path}\\{workfolder}\\Documentation\\version.txt") as versionfile:
         version = versionfile.read().strip()
     print(neutral(f"Version: {version}"))
-    if "ProgramFiles(x86)" in os.environ:
-        mod = sp.run(f'{repo_path}\\mod.exe', cwd=repo_path)
-    else:
-        mod = sp.run(f'{repo_path}\\mod_32.exe', cwd=repo_path)
+
+    mod = sp.run(f'{repo_path}\\Rebalance\\mod.exe -gamepath {game_path}', cwd=f'{repo_path}\\Rebalance\\')
 
     if mod.returncode:
         print(bad("Balance Patch Failed!"))
@@ -162,7 +161,7 @@ def get_maps():
     matching_maps = files_in_dir & original_maps_set
     other_maps = files_in_dir - original_maps_set
 
-    maps_to_copy = set(os.listdir(f"{game_path}\\{workfolder}\\DONTOPEN\\mapsExtreme"))
+    maps_to_copy = set(os.listdir(f"{game_path}\\{workfolder}\\Maps"))
     maps_to_backup = other_maps - maps_to_copy
     for mapfile_original in matching_maps:
         pth_original_maps = f"{game_path}\\mapsExtreme\\original"
@@ -176,34 +175,17 @@ def get_maps():
         sp.run(f'move /Y "{game_path}\\mapsExtreme\\{mapfile_custom}" "{pth_custom_maps}"',
                shell=True, stdout=sp.DEVNULL)
     for map_to_copy in maps_to_copy:
-        shutil.copy2(f"{game_path}\\{workfolder}\\DONTOPEN\\mapsExtreme\\{map_to_copy}", f"{game_path}\\mapsExtreme")
+        shutil.copy2(f"{game_path}\\{workfolder}\\Maps\\{map_to_copy}", f"{game_path}\\mapsExtreme")
 
 
-def get_custom_graphics():
-    if os.path.exists(cg_zip := f"{game_path}\\{workfolder}\\CustomGraphics.zip"):
-        with zipfile.ZipFile(cg_zip) as zip_ref:
-            zip_ref.extractall()
-            for cg_folder in os.listdir("CustomGraphics"):
-                cg_filename = "LocallyStoredTexture.gm1"
-                with open(f"{game_path}\\gm\\{cg_folder}.gm1", 'rb') as gm1file_reference:
-                    cg_file_checksum = hashlib.md5(gm1file_reference.read()).hexdigest()
-                    for cg_file in os.listdir(f"CustomGraphics\\{cg_folder}"):
-                        with open(f"CustomGraphics\\{cg_folder}\\{cg_file}", "rb") as cg_file_check:
-                            if hashlib.md5(cg_file_check.read()).hexdigest() == cg_file_checksum:
-                                break  # it is one of the known custom texture files
-                    else:
-                        i = 0
-                        while cg_filename in os.listdir(f"CustomGraphics\\{cg_folder}"):
-                            cg_filename = f"LocallyStoredTexture_{i}.gm1"
-                        sp.run(f'copy "{game_path}\\gm\\{cg_folder}.gm1" '
-                               f'"CustomGraphics\\{cg_folder}\\{cg_filename}" > NUL', shell=True)
+def apply_localisation():
+    pass
 
 
 def conclude():
     shell = client.Dispatch("WScript.Shell")
 
     updater_shortcut_path = os.path.abspath(game_path + "\\AscensionMod - Updater.lnk")
-    preview_shortcut_path = os.path.abspath(game_path + "\\AscensionMod - Preview Version.lnk")
     cg_cfg_shortcut_path = os.path.abspath(game_path + "\\AscensionMod - CustomGraphicConfigurator.lnk")
 
     def create_shortcut(shortcut_path, *,
@@ -222,9 +204,6 @@ def conclude():
     if not os.path.exists(updater_shortcut_path):
         create_shortcut(updater_shortcut_path)
 
-    if not os.path.exists(preview_shortcut_path):
-        create_shortcut(preview_shortcut_path, arguments="preview")
-
     cg_cfg_shortcut_check = os.path.exists(cg_cfg_shortcut_path)
     if not cg_cfg_shortcut_check:
         create_shortcut(cg_cfg_shortcut_path,
@@ -240,17 +219,11 @@ def conclude():
 
 
 if __name__ == '__main__':
-    if os.path.exists("leftover_command.txt"):
-        with open("leftover_command.txt") as cmdfile:
-            preview_mode = "preview" in cmdfile.read()
-        os.remove("leftover_command.txt")
-    else:
-        preview_mode = "preview" in sys.argv
+    repo_addr = "https://github.com/Krarilotus/Ascension.git"
+    workfolder = "Ascension"
 
-    repo_prev = "https://github.com/Altaruss28/AscensionMultiplayerSetup.git"
-    repo_main = "https://github.com/Krarilotus/AscensionMultiplayerSetup.git"
-    repo_addr = repo_prev if preview_mode else repo_main
-    workfolder = "AscensionMultiplayerSetup_preview" if preview_mode else "AscensionMultiplayerSetup"
+    # backup folder for graphics and localisation
+    os.makedirs("backups", exist_ok=True)
 
     colorama.init()
     check_installer_version()
@@ -273,5 +246,5 @@ if __name__ == '__main__':
     download_update()
     install_mod()
     get_maps()
-    get_custom_graphics()
+    apply_localisation()
     conclude()
