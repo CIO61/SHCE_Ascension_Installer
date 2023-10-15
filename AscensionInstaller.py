@@ -8,8 +8,6 @@ import colorama
 import pymsgbox
 import requests
 import shutil
-import zipfile
-import hashlib
 
 from colorama import Fore
 # noinspection PyPackageRequirements
