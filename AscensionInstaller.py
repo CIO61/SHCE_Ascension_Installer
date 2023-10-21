@@ -1,5 +1,9 @@
+import glob
+import locale
 import os
 import subprocess as sp
+from hashlib import sha256
+
 import sys
 import traceback
 from functools import partial
@@ -12,6 +16,8 @@ import shutil
 from colorama import Fore
 # noinspection PyPackageRequirements
 from win32com import client
+import ctypes
+lang = locale.windows_locale[ctypes.windll.kernel32.GetUserDefaultUILanguage()]
 
 original_maps_set = {
     "Best_Friends.map", "Bird_in_flight.map", "Coastal_Trap.map", "Crossroads.map", "Divided.map", "Enclosure.map",
@@ -34,7 +40,7 @@ good = partial(fc, "green")
 
 
 def check_installer_version():
-    version = "v5.0"
+    version = "v5.0b"
     source_address = "https://github.com/CIO61/SHCE_Ascension_Installer"
     l_version_page = requests.get(f"{source_address}/releases/latest")
     l_version = l_version_page.url.rpartition("/")[2]
@@ -111,7 +117,7 @@ def download_update():
         if updcheck.stdout.strip() == "Already up to date.":
             print("\nAlready on the latest version.")
         else:
-            print("\nDone Checking Updates.")
+            print("\nUpdated to latest version.")
 
 
 def install_mod():
@@ -177,7 +183,21 @@ def get_maps():
 
 
 def apply_localisation():
-    pass
+    locale_dir = f"{game_path}/{workfolder}/Localization/{game_language}"
+    os.makedirs("backups/fx/speech", exist_ok=True)
+    for file in glob.glob(f"{locale_dir}/*.wav"):
+        file_name = os.path.basename(file)
+        backup_path = f"backups/fx/speech/{file_name}"
+        orig_path = f"{game_path}/fx/speech/{file_name}"
+        shutil.copy(orig_path, backup_path)
+        shutil.copy(file, orig_path)
+
+    crtex_original = f"{game_path}/cr.tex"
+    crtex_backup = "backups/cr.tex"
+    crtex_src = f"{locale_dir}/cr.tex"
+
+    shutil.copy(crtex_original, crtex_backup)
+    shutil.copy(crtex_src, crtex_original)
 
 
 def conclude():
@@ -219,6 +239,11 @@ def conclude():
 if __name__ == '__main__':
     repo_addr = "https://github.com/Krarilotus/Ascension.git"
     workfolder = "Ascension"
+    language_map = {
+        "6716ffe38391012f04ce32017eb65e52eeddbeb4acc76268d726786c8bfb9dc3": "German",
+        "989ddcb13e27bc045ab390f42a68b71b53bdf66462753cf6a66c343d1d5e264c": "Russian",
+        "ab423bec4dab75595f9568564137584e72189bc0c95851abfe54058aa2f2ff68": "English"
+    }
 
     # backup folder for graphics and localisation
     os.makedirs("backups", exist_ok=True)
@@ -233,6 +258,16 @@ if __name__ == '__main__':
                        "Put the installer in a game folder with Stronghold_Crusader_Extreme.exe.", "Mod")
         sys.exit()
 
+    already_patched = "cr_original.tex" in os.listdir("backups")
+    with open(f"{game_path}/cr.tex", "rb") as crtexfile:
+        crtex_data = crtexfile.read()
+
+    game_language = language_map.get(sha256(crtex_data).hexdigest(), None)
+
+    print(f"Detected system language: {lang}")
+    if game_language:
+        print(f"Detected game language: {game_language}")
+
     git_checker = sp.run("where git", stdout=sp.PIPE, stderr=sp.STDOUT)
     if git_checker.returncode == 0:
         git_path = "git"
@@ -244,5 +279,9 @@ if __name__ == '__main__':
     download_update()
     install_mod()
     get_maps()
-    apply_localisation()
+    if game_language:
+        apply_localisation()
+    else:
+        if not already_patched:
+            print("Localisation Patch is not applied, some text in game might make no sense.")
     conclude()
