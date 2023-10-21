@@ -150,7 +150,7 @@ def install_mod():
         version = versionfile.read().strip()
     print(neutral(f"Version: {version}"))
 
-    mod = sp.run(f'{repo_path}\\Rebalance\\mod.exe -gamepath {game_path}', cwd=f'{repo_path}\\Rebalance\\')
+    mod = sp.run(f'{repo_path}\\Rebalance\\mod.exe -gamepath "{game_path}"', cwd=f'{repo_path}\\Rebalance\\')
 
     if mod.returncode:
         print(bad("Balance Patch Failed!"))
