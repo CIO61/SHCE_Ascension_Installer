@@ -262,7 +262,7 @@ if __name__ == '__main__':
                        "Put the installer in a game folder with Stronghold_Crusader_Extreme.exe.", "Mod")
         sys.exit()
 
-    already_patched = "cr_original.tex" in os.listdir("backups")
+    already_patched = "cr.tex" in os.listdir("backups")
     with open(f"{game_path}/cr.tex", "rb") as crtexfile:
         crtex_data = crtexfile.read()
 
