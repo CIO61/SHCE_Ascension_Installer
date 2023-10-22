@@ -42,7 +42,11 @@ good = partial(fc, "green")
 def check_installer_version():
     version = "v5.0b"
     source_address = "https://github.com/CIO61/SHCE_Ascension_Installer"
-    l_version_page = requests.get(f"{source_address}/releases/latest")
+    try:
+        l_version_page = requests.get(f"{source_address}/releases/latest")
+    except requests.RequestException:
+        print(bad("Could not check updates for installer, skipping"))
+        return
     l_version = l_version_page.url.rpartition("/")[2]
     if version != l_version:
         try:
