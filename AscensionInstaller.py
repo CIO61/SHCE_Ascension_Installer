@@ -40,7 +40,7 @@ good = partial(fc, "green")
 
 
 def check_installer_version():
-    version = "v5.0b"
+    version = "v5.0c"
     source_address = "https://github.com/CIO61/SHCE_Ascension_Installer"
     try:
         l_version_page = requests.get(f"{source_address}/releases/latest")
